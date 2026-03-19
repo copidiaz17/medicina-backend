@@ -56,21 +56,38 @@ router.get('/:id', async (req, res) => {
 // Crear consulta
 router.post('/', async (req, res) => {
   try {
-    const p = await Paciente.findOne({ where: { id: req.body.paciente_id, doctor_id: req.user.id } })
+    const scope = req.user.rol === 'admin' ? {} : { doctor_id: req.user.rol === 'secretaria' ? req.user.medico_id : req.user.id }
+    const p = await Paciente.findOne({ where: { id: req.body.paciente_id, ...scope } })
     if (!p) return res.status(403).json({ error: 'Acceso denegado' })
-    const c = await Consulta.create(req.body)
-    res.status(201).json(c)
-  } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al crear consulta') }) }
+    // Convertir strings vacíos a null en campos numéricos
+    const campos_num = ['frecuencia_cardiaca', 'frecuencia_respiratoria', 'temperatura', 'saturacion_o2', 'peso_kg']
+    const datos = { ...req.body }
+    for (const c of campos_num) if (datos[c] === '' || datos[c] === undefined) datos[c] = null
+    const consulta = await Consulta.create(datos)
+    res.status(201).json(consulta)
+  } catch (err) {
+    console.error('[ERROR consulta]', err.message)
+    res.status(400).json({ error: err.message || 'Error al crear consulta' })
+  }
 })
 
 // Editar consulta
 router.put('/:id', async (req, res) => {
   try {
-    const c = await verificarPropietario(req.params.id, req.user.id)
+    const doctorId = req.user.rol === 'admin' ? null : req.user.id
+    const c = doctorId === null
+      ? await Consulta.findByPk(req.params.id, { include: [{ model: Paciente, as: 'paciente', attributes: ['doctor_id'] }] })
+      : await verificarPropietario(req.params.id, doctorId)
     if (!c) return res.status(404).json({ error: 'No encontrada o acceso denegado' })
-    await c.update(req.body)
+    const campos_num = ['frecuencia_cardiaca', 'frecuencia_respiratoria', 'temperatura', 'saturacion_o2', 'peso_kg']
+    const datos = { ...req.body }
+    for (const campo of campos_num) if (datos[campo] === '' || datos[campo] === undefined) datos[campo] = null
+    await c.update(datos)
     res.json(c)
-  } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al actualizar consulta') }) }
+  } catch (err) {
+    console.error('[ERROR update consulta]', err.message)
+    res.status(400).json({ error: err.message || 'Error al actualizar consulta' })
+  }
 })
 
 export default router
