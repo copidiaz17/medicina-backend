@@ -11,6 +11,9 @@ export const sequelize = new Sequelize(
     port:    process.env.DB_PORT,
     dialect: 'mysql',
     logging: false,
+    dialectOptions: process.env.DB_SSL === 'true' ? {
+      ssl: { rejectUnauthorized: false }
+    } : {},
     pool: {
       max:     10,   // máximo de conexiones simultáneas
       min:     2,    // conexiones mínimas mantenidas
