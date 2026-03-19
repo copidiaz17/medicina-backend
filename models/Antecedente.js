@@ -9,9 +9,9 @@ export const Antecedente = sequelize.define('Antecedente', {
   patologias_previas:     { type: DataTypes.TEXT, allowNull: true },
   alergias:               { type: DataTypes.TEXT, allowNull: true },
   cirugias_previas:       { type: DataTypes.TEXT, allowNull: true },
-  tabaco:                 { type: DataTypes.ENUM('no_fumador', 'ex_fumador', 'fumador_leve', 'fumador_moderado', 'fumador_severo'), defaultValue: 'no_fumador' },
-  alcohol:                { type: DataTypes.ENUM('no', 'ocasional', 'moderado', 'frecuente'), defaultValue: 'no' },
-  actividad_fisica:       { type: DataTypes.ENUM('sedentario', 'leve', 'moderado', 'intenso'), defaultValue: 'sedentario' },
+  tabaco:                 { type: DataTypes.STRING(30), defaultValue: 'no_fumador' },
+  alcohol:                { type: DataTypes.STRING(20), defaultValue: 'no' },
+  actividad_fisica:       { type: DataTypes.STRING(20), defaultValue: 'sedentario' },
   otros_habitos:          { type: DataTypes.TEXT, allowNull: true },
 }, { tableName: 'antecedentes', freezeTableName: true, timestamps: true })
 
