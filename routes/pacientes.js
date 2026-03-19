@@ -110,13 +110,24 @@ router.put('/:id/antecedentes', async (req, res) => {
     const p = await Paciente.findOne({ where: { id: req.params.id, ...scopeDoctor(req) } })
     if (!p) return res.status(404).json({ error: 'Paciente no encontrado' })
 
-    const [ant] = await Antecedente.findOrCreate({
-      where: { paciente_id: req.params.id },
-      defaults: { ...req.body, paciente_id: req.params.id }
-    })
-    if (ant.id) await ant.update(req.body)
+    // Solo campos válidos del modelo
+    const campos = ['antecedentes_familiares', 'patologias_previas', 'alergias', 'cirugias_previas', 'tabaco', 'alcohol', 'actividad_fisica', 'otros_habitos']
+    const datos = {}
+    for (const c of campos) if (req.body[c] !== undefined) datos[c] = req.body[c]
+
+    const existing = await Antecedente.findOne({ where: { paciente_id: req.params.id } })
+    let ant
+    if (existing) {
+      await existing.update(datos)
+      ant = existing
+    } else {
+      ant = await Antecedente.create({ ...datos, paciente_id: Number(req.params.id) })
+    }
     res.json(ant)
-  } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al guardar antecedentes') }) }
+  } catch (err) {
+    console.error('[ERROR antecedentes]', err)
+    res.status(400).json({ error: errMsg(err, 'Error al guardar antecedentes') })
+  }
 })
 
 // ── Medicaciones ────────────────────────────────────────────────────────────
