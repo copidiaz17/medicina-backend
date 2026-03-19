@@ -41,7 +41,7 @@ router.get('/medicos', async (req, res) => {
 
 router.post('/', hasRole(['admin']), async (req, res) => {
   try {
-    const { nombre, username, password, rol, medico_id } = req.body
+    const { nombre, username, password, rol, medico_id, demo } = req.body
     if (!nombre || !username || !password || !rol) {
       return res.status(400).json({ error: 'Faltan campos requeridos' })
     }
@@ -53,7 +53,7 @@ router.post('/', hasRole(['admin']), async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10)
     const medicoIdFinal = rol === 'secretaria' ? medico_id : null
-    const u = await Usuario.create({ nombre, username, password: hash, rol, medico_id: medicoIdFinal })
+    const u = await Usuario.create({ nombre, username, password: hash, rol, medico_id: medicoIdFinal, demo: demo ?? false })
     res.status(201).json({ id: u.id, nombre: u.nombre, rol: u.rol, medico_id: u.medico_id })
   } catch (err) {
     res.status(400).json({ error: IS_PROD ? 'Error al crear usuario' : err.message })
