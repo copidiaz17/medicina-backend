@@ -25,7 +25,8 @@ async function verificarPropietario(consultaId, doctorId) {
 // Listar consultas de un paciente
 router.get('/paciente/:pacienteId', async (req, res) => {
   try {
-    const p = await Paciente.findOne({ where: { id: req.params.pacienteId, doctor_id: req.user.id } })
+    const scope = req.user.rol === 'admin' ? {} : { doctor_id: req.user.rol === 'secretaria' ? req.user.medico_id : req.user.id }
+    const p = await Paciente.findOne({ where: { id: req.params.pacienteId, ...scope } })
     if (!p) return res.status(404).json({ error: 'Paciente no encontrado' })
 
     const consultas = await Consulta.findAll({
