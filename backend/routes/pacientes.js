@@ -125,8 +125,8 @@ router.put('/:id/antecedentes', async (req, res) => {
     }
     res.json(ant)
   } catch (err) {
-    console.error('[ERROR antecedentes]', err)
-    res.status(400).json({ error: errMsg(err, 'Error al guardar antecedentes') })
+    console.error('[ERROR antecedentes]', err.message, err.stack)
+    res.status(400).json({ error: err.message || 'Error al guardar antecedentes' })
   }
 })
 
