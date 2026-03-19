@@ -95,6 +95,10 @@
             </div>
             <p class="text-xs text-gray-400 mt-1">400 consultas/mes ≈ 16 pacientes/día × 25 días</p>
           </div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" v-model="form.demo" id="demo" class="rounded" />
+            <label for="demo" class="text-sm text-gray-700">Perfil demo <span class="text-gray-400 text-xs">(muestra modal de suscripción al agotar IA)</span></label>
+          </div>
           <div v-if="form.id" class="flex items-center gap-2">
             <input type="checkbox" v-model="form.activo" id="activo" class="rounded" />
             <label for="activo" class="text-sm text-gray-700">Usuario activo</label>
@@ -124,7 +128,7 @@ const medicos  = ref([])
 const modal    = ref(false)
 const guardando = ref(false)
 const error     = ref('')
-const form = reactive({ id: null, nombre: '', username: '', password: '', rol: 'medico', activo: true, consultas_ia_limite: 400, ilimitado: false, medico_id: null })
+const form = reactive({ id: null, nombre: '', username: '', password: '', rol: 'medico', activo: true, consultas_ia_limite: 400, ilimitado: false, medico_id: null, demo: false })
 
 function nombreMedico(id) {
   const m = medicos.value.find(m => m.id === id)
@@ -137,8 +141,9 @@ function abrirModal(u = null) {
     consultas_ia_limite: u.consultas_ia_limite ?? 400,
     ilimitado: u.consultas_ia_limite === null,
     medico_id: u.medico_id ?? null,
+    demo: u.demo ?? false,
   })
-  else Object.assign(form, { id: null, nombre: '', username: '', password: '', rol: 'medico', activo: true, consultas_ia_limite: 400, ilimitado: false, medico_id: null })
+  else Object.assign(form, { id: null, nombre: '', username: '', password: '', rol: 'medico', activo: true, consultas_ia_limite: 400, ilimitado: false, medico_id: null, demo: false })
   modal.value = true
   error.value = ''
 }

@@ -12,4 +12,6 @@ export const Usuario = sequelize.define('Usuario', {
   consultas_ia_limite: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 400 },
   // Solo para rol 'secretaria': id del médico al que pertenece
   medico_id: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
+  // Perfil demo: límite reducido + modal de suscripción al agotar IA
+  demo: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, { tableName: 'usuarios', freezeTableName: true, timestamps: true })

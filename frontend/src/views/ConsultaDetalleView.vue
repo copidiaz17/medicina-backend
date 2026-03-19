@@ -630,6 +630,37 @@ Conclusión: Función sistólica conservada. IM leve sin repercusión hemodinám
         </div>
       </div>
     </div>
+
+    <!-- Modal demo: suscripción -->
+    <div v-if="modalDemo" class="modal-backdrop">
+      <div class="modal-box max-w-sm text-center">
+        <div class="mb-4">
+          <div class="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-robot text-violet-500 text-2xl"></i>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900 mb-1">¡Probaste la IA!</h3>
+          <p class="text-sm text-gray-500">Agotaste las consultas del modo demo. Para acceder ilimitado suscribite a Medicina IA.</p>
+        </div>
+        <div class="bg-violet-50 rounded-xl p-4 mb-5">
+          <p class="text-sm font-semibold text-violet-800 mb-1">¿Qué incluye la suscripción?</p>
+          <ul class="text-xs text-violet-700 space-y-1 text-left">
+            <li><i class="fas fa-check mr-1"></i> Consultas IA ilimitadas</li>
+            <li><i class="fas fa-check mr-1"></i> Gestión de pacientes y turnos</li>
+            <li><i class="fas fa-check mr-1"></i> Agenda para tu secretaria</li>
+            <li><i class="fas fa-check mr-1"></i> Historial clínico completo</li>
+          </ul>
+        </div>
+        <a
+          href="https://wa.me/543854414082?text=Hola!%20Quiero%20suscribirme%20a%20Medicina%20IA"
+          target="_blank"
+          class="w-full btn-primary justify-center py-3 text-base flex items-center gap-2 mb-3"
+          style="background:#25D366; border-color:#25D366"
+        >
+          <i class="fab fa-whatsapp text-lg"></i> Contactar por WhatsApp
+        </a>
+        <button @click="modalDemo = false" class="text-sm text-gray-400 hover:text-gray-600">Cerrar</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -649,6 +680,7 @@ const consulta        = ref(null)
 const respuestaIA     = ref(null)
 const errorClaude     = ref('')
 const usoIA           = ref(null)
+const modalDemo       = ref(false)
 const errorCarga      = ref('')
 const archivos        = ref([])
 
@@ -1099,9 +1131,13 @@ async function consultarClaude() {
       usoIA.value = uso
     } catch { /* ignorar */ }
   } catch (err) {
-    const msg = err.response?.data?.error || 'Error al consultar IA'
-    errorClaude.value = msg
-    toast.error(msg)
+    if (err.response?.data?.es_demo) {
+      modalDemo.value = true
+    } else {
+      const msg = err.response?.data?.error || 'Error al consultar IA'
+      errorClaude.value = msg
+      toast.error(msg)
+    }
   } finally {
     cargandoClaude.value = false
   }

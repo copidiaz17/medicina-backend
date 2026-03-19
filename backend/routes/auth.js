@@ -23,11 +23,11 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password)
     if (!ok) return res.status(401).json({ error: 'Credenciales inválidas' })
     const token = jwt.sign(
-      { id: user.id, nombre: user.nombre, username: user.username, rol: user.rol, medico_id: user.medico_id ?? null },
+      { id: user.id, nombre: user.nombre, username: user.username, rol: user.rol, medico_id: user.medico_id ?? null, demo: user.demo ?? false },
       process.env.JWT_SECRET,
       { expiresIn: '12h' }
     )
-    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol, medico_id: user.medico_id ?? null } })
+    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol, medico_id: user.medico_id ?? null, demo: user.demo ?? false } })
   } catch (err) {
     res.status(500).json({ error: IS_PROD ? 'Error de autenticación' : err.message })
   }
@@ -77,11 +77,11 @@ router.post('/refresh', authMiddleware, async (req, res) => {
     const user = await Usuario.findByPk(req.user.id)
     if (!user || !user.activo) return res.status(401).json({ error: 'Usuario inactivo' })
     const token = jwt.sign(
-      { id: user.id, nombre: user.nombre, username: user.username, rol: user.rol, medico_id: user.medico_id ?? null },
+      { id: user.id, nombre: user.nombre, username: user.username, rol: user.rol, medico_id: user.medico_id ?? null, demo: user.demo ?? false },
       process.env.JWT_SECRET,
       { expiresIn: '12h' }
     )
-    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol, medico_id: user.medico_id ?? null } })
+    res.json({ token, user: { id: user.id, nombre: user.nombre, rol: user.rol, medico_id: user.medico_id ?? null, demo: user.demo ?? false } })
   } catch (err) {
     res.status(500).json({ error: 'Error al renovar sesión' })
   }

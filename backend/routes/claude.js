@@ -372,13 +372,16 @@ router.post('/consultar/:consultaId', async (req, res) => {
 
   try {
     // Verificar límite mensual de consultas IA
-    const usuario = await Usuario.findByPk(req.user.id, { attributes: ['consultas_ia_limite'] })
+    const usuario = await Usuario.findByPk(req.user.id, { attributes: ['consultas_ia_limite', 'demo'] })
     if (usuario.consultas_ia_limite !== null) {
       const usadas = await contarUsoPorMes(req.user.id)
       if (usadas >= usuario.consultas_ia_limite) {
         return res.status(429).json({
-          error: `Límite mensual de ${usuario.consultas_ia_limite} consultas IA alcanzado. Contactá al administrador para ampliar tu plan.`,
+          error: usuario.demo
+            ? 'Límite de consultas demo alcanzado.'
+            : `Límite mensual de ${usuario.consultas_ia_limite} consultas IA alcanzado. Contactá al administrador para ampliar tu plan.`,
           limite_alcanzado: true,
+          es_demo: usuario.demo ?? false,
         })
       }
     }
