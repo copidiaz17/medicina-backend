@@ -53,6 +53,9 @@ const app = express()
 const PORT = process.env.PORT || 3001
 const IS_PROD = process.env.NODE_ENV === 'production'
 
+// ── Trust proxy (Render / cualquier reverse proxy) ─────────────
+app.set('trust proxy', 1)
+
 // ── Seguridad: headers HTTP ────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-origin' },
