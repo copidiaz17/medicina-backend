@@ -26,7 +26,12 @@
           </div>
           <div>
             <label class="form-label">Contraseña</label>
-            <input v-model="form.password" type="password" class="input-field" placeholder="••••••••" required />
+            <div class="relative">
+              <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="input-field pr-10" placeholder="••••••••" required />
+              <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
           </div>
 
           <p v-if="error" class="text-red-500 text-sm text-center">{{ error }}</p>
@@ -50,9 +55,10 @@ import { useAuthStore } from '@/stores/auth'
 const router    = useRouter()
 const authStore = useAuthStore()
 
-const form    = reactive({ username: '', password: '' })
-const loading = ref(false)
-const error   = ref('')
+const form         = reactive({ username: '', password: '' })
+const loading      = ref(false)
+const error        = ref('')
+const showPassword = ref(false)
 
 async function handleLogin() {
   loading.value = true

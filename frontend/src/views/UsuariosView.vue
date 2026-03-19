@@ -156,7 +156,7 @@ async function guardar() {
     else await axios.post('/api/usuarios', payload)
     toast.success('Guardado')
     modal.value = false
-    await cargar()
+    await Promise.all([cargar(), cargarMedicos()])
   } catch (err) { error.value = err.response?.data?.error || 'Error' }
   finally { guardando.value = false }
 }
