@@ -1,0 +1,24 @@
+# Variables de entorno — NUNCA commitear
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Dependencias
+backend/node_modules/
+frontend/node_modules/
+
+# Build del frontend
+frontend/dist/
+
+# Archivos subidos por usuarios (datos médicos)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
