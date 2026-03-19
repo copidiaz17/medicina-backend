@@ -445,12 +445,22 @@ async function eliminarMed(m) {
 async function guardarAnt() {
   guardandoAnt.value = true
   try {
-    const { data } = await axios.put(`/api/pacientes/${paciente.value.id}/antecedentes`, antForm)
+    const payload = {
+      antecedentes_familiares: antForm.antecedentes_familiares,
+      patologias_previas:      antForm.patologias_previas,
+      alergias:                antForm.alergias,
+      cirugias_previas:        antForm.cirugias_previas,
+      tabaco:                  antForm.tabaco,
+      alcohol:                 antForm.alcohol,
+      actividad_fisica:        antForm.actividad_fisica,
+      otros_habitos:           antForm.otros_habitos,
+    }
+    const { data } = await axios.put(`/api/pacientes/${paciente.value.id}/antecedentes`, payload)
     ant.value = data
-    Object.assign(antForm, data)
+    Object.assign(antForm, payload)
     editAnt.value = false
     toast.success('Antecedentes guardados')
-  } catch (err) { toast.error('Error al guardar') }
+  } catch (err) { toast.error(err.response?.data?.error || 'Error al guardar') }
   finally { guardandoAnt.value = false }
 }
 
