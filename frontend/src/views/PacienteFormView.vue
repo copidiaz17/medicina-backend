@@ -148,11 +148,14 @@ async function guardar() {
   guardando.value = true
   error.value     = ''
   try {
+    const payload = { ...form }
+    const camposNulos = ['fecha_nacimiento', 'peso_kg', 'talla_cm']
+    for (const c of camposNulos) if (payload[c] === '' || payload[c] === undefined) payload[c] = null
     if (editando.value) {
-      await axios.put(`/api/pacientes/${route.params.id}`, form)
+      await axios.put(`/api/pacientes/${route.params.id}`, payload)
       router.push(`/pacientes/${route.params.id}`)
     } else {
-      const { data } = await axios.post('/api/pacientes', form)
+      const { data } = await axios.post('/api/pacientes', payload)
       router.push(`/pacientes/${data.id}`)
     }
   } catch (err) {
