@@ -1145,7 +1145,7 @@ async function consultarClaude() {
   cargandoClaude.value = true
   errorClaude.value = ''
   try {
-    const { data } = await axios.post(`/api/claude/consultar/${consulta.value.id}`, { especialidad: especialidad.value })
+    const { data } = await axios.post(`/api/claude/consultar/${consulta.value.id}`, { especialidad: especialidad.value }, { timeout: 120000 })
     respuestaIA.value = { texto: data.respuesta, tokens: data.tokens, especialidadLabel: especialidadLabel.value }
     const msg = data.archivos_analizados > 0
       ? `Análisis generado (${data.archivos_analizados} archivo(s) analizados por visión IA)`
