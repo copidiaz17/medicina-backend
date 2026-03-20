@@ -225,15 +225,28 @@
           <select v-model="especialidad" class="flex-1 select-field text-sm">
             <option value="alergologia">🌿 Alergología / Inmunología</option>
             <option value="cardiologia">🫀 Cardiología</option>
+            <option value="cirugia_general">🔪 Cirugía General</option>
             <option value="clinica_medica">🩺 Clínica Médica</option>
+            <option value="dermatologia">🧴 Dermatología</option>
             <option value="diabetologia">🩸 Diabetología / Endocrinología</option>
+            <option value="emergentologia">🚨 Emergentología / Urgencias</option>
             <option value="gastroenterologia">🫃 Gastroenterología</option>
+            <option value="geriatria">👴 Geriatría</option>
             <option value="ginecologia">🌸 Ginecología / Obstetricia</option>
-            <option value="neurologia">🧠 Neurología</option>
+            <option value="hematologia">🩸 Hematología</option>
+            <option value="infectologia">🦠 Infectología</option>
+            <option value="nefrologia">🫘 Nefrología</option>
             <option value="neumologia">🫁 Neumología</option>
+            <option value="neurologia">🧠 Neurología</option>
+            <option value="nutricion">🥗 Nutrición y Dietología</option>
+            <option value="oftalmologia">👁️ Oftalmología</option>
             <option value="oncologia">🔬 Oncología</option>
+            <option value="otorrinolaringologia">👂 Otorrinolaringología</option>
             <option value="pediatria">👶 Pediatría</option>
+            <option value="psiquiatria">🧩 Psiquiatría</option>
+            <option value="reumatologia">🦴 Reumatología</option>
             <option value="traumatologia">🦴 Traumatología / Ortopedia</option>
+            <option value="urologia">🫀 Urología</option>
           </select>
         </div>
         <button
@@ -286,15 +299,28 @@
             <select v-model="especialidad" class="select-field text-xs py-1 no-print">
               <option value="alergologia">🌿 Alergología</option>
               <option value="cardiologia">🫀 Cardiología</option>
+              <option value="cirugia_general">🔪 Cirugía General</option>
               <option value="clinica_medica">🩺 Clínica Médica</option>
+              <option value="dermatologia">🧴 Dermatología</option>
               <option value="diabetologia">🩸 Diabetología</option>
+              <option value="emergentologia">🚨 Emergentología</option>
               <option value="gastroenterologia">🫃 Gastroenterología</option>
+              <option value="geriatria">👴 Geriatría</option>
               <option value="ginecologia">🌸 Ginecología</option>
-              <option value="neurologia">🧠 Neurología</option>
+              <option value="hematologia">🩸 Hematología</option>
+              <option value="infectologia">🦠 Infectología</option>
+              <option value="nefrologia">🫘 Nefrología</option>
               <option value="neumologia">🫁 Neumología</option>
+              <option value="neurologia">🧠 Neurología</option>
+              <option value="nutricion">🥗 Nutrición</option>
+              <option value="oftalmologia">👁️ Oftalmología</option>
               <option value="oncologia">🔬 Oncología</option>
+              <option value="otorrinolaringologia">👂 Otorrino</option>
               <option value="pediatria">👶 Pediatría</option>
+              <option value="psiquiatria">🧩 Psiquiatría</option>
+              <option value="reumatologia">🦴 Reumatología</option>
               <option value="traumatologia">🦴 Traumatología</option>
+              <option value="urologia">🫀 Urología</option>
             </select>
             <button @click="consultarClaude" :disabled="cargandoClaude" class="btn-secondary text-xs">
               <i class="fas fa-redo"></i> Regenerar
