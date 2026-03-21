@@ -408,6 +408,15 @@ function construirContentBlocks(contextoTexto, archivos) {
   const blocks = [{ type: 'text', text: contextoTexto }]
 
   for (const archivo of archivos) {
+    const label = `${archivo.nombre_original} (${archivo.categoria}${archivo.descripcion ? ' — ' + archivo.descripcion : ''})`
+
+    // Texto almacenado en DB (filesystem efímero en Render)
+    if (archivo.tipo_mime === 'text/plain') {
+      const contenido = archivo.contenido || '[Contenido no disponible]'
+      blocks.push({ type: 'text', text: `\n---\n**Informe escrito (${archivo.categoria}):** ${label}\n${contenido}` })
+      continue
+    }
+
     const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
     if (!fs.existsSync(ruta)) continue
 
@@ -419,7 +428,6 @@ function construirContentBlocks(contextoTexto, archivos) {
         continue
       }
       const base64 = buffer.toString('base64')
-      const label  = `${archivo.nombre_original} (${archivo.categoria}${archivo.descripcion ? ' — ' + archivo.descripcion : ''})`
 
       if (archivo.tipo_mime.startsWith('image/')) {
         const mediaType = ['image/jpeg','image/png','image/gif','image/webp'].includes(archivo.tipo_mime)
@@ -430,10 +438,6 @@ function construirContentBlocks(contextoTexto, archivos) {
       } else if (archivo.tipo_mime === 'application/pdf') {
         blocks.push({ type: 'text', text: `\n---\n**PDF adjunto para análisis:** ${label}` })
         blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } })
-
-      } else if (archivo.tipo_mime === 'text/plain') {
-        const contenido = buffer.toString('utf8')
-        blocks.push({ type: 'text', text: `\n---\n**Informe escrito (${archivo.categoria}):** ${label}\n${contenido}` })
       }
     } catch (e) {
       blocks.push({ type: 'text', text: `[Error al leer ${archivo.nombre_original}: ${e.message}]` })

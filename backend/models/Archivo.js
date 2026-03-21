@@ -14,6 +14,7 @@ export const Archivo = sequelize.define('Archivo', {
     defaultValue: 'otro'
   },
   descripcion:      { type: DataTypes.STRING(255), allowNull: true },
+  contenido:        { type: DataTypes.TEXT('long'), allowNull: true },
 }, { tableName: 'archivos', freezeTableName: true, timestamps: true })
 
 Archivo.belongsTo(Consulta, { foreignKey: 'consulta_id', as: 'consulta' })

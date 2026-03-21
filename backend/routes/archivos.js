@@ -108,6 +108,12 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
     const creados = []
     for (const file of req.files) {
       const cat = categoria || detectarCategoria(file.mimetype, file.originalname)
+      // Texto: guardar contenido en DB y eliminar archivo físico
+      let contenido = null
+      if (file.mimetype === 'text/plain') {
+        contenido = fs.readFileSync(join(UPLOADS_DIR, file.filename), 'utf8')
+        fs.unlinkSync(join(UPLOADS_DIR, file.filename))
+      }
       const a = await Archivo.create({
         consulta_id:     req.params.consultaId,
         nombre_original: file.originalname,
@@ -116,6 +122,7 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
         tamano:          file.size,
         categoria:       cat,
         descripcion:     descripcion || '',
+        contenido,
       })
       creados.push(a)
     }
@@ -166,6 +173,12 @@ router.get('/ver/:filename', async (req, res) => {
     if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado' })
     if (archivo.consulta.paciente.doctor_id !== req.user.id) {
       return res.status(403).json({ error: 'Acceso denegado' })
+    }
+
+    // Texto guardado en DB (filesystem efímero en Render)
+    if (archivo.contenido !== null && archivo.contenido !== undefined) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      return res.send(archivo.contenido)
     }
 
     const ruta = join(UPLOADS_DIR, filename)
