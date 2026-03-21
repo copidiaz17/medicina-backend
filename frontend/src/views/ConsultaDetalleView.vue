@@ -709,6 +709,7 @@ const usoIA           = ref(null)
 const modalDemo       = ref(false)
 const errorCarga      = ref('')
 const archivos        = ref([])
+const pacienteCompleto = ref(null)
 
 // Diagnóstico inline
 const editDiag     = ref(false)
@@ -812,6 +813,44 @@ async function exportarPDF() {
     const lines = doc.splitTextToSize(texto, ancho - 28)
     doc.text(lines, 14, y)
     y += lines.length * 4 + 4
+    if (y > 270) { doc.addPage(); y = 15 }
+  }
+
+  // Antecedentes
+  const ant = pacienteCompleto.value?.antecedente
+  if (ant) {
+    const antTexto = [
+      ant.patologias_previas ? `Patologías previas: ${ant.patologias_previas}` : null,
+      ant.antecedentes_familiares ? `Antecedentes familiares: ${ant.antecedentes_familiares}` : null,
+      ant.alergias ? `Alergias: ${ant.alergias}` : null,
+      ant.cirugias_previas ? `Cirugías previas: ${ant.cirugias_previas}` : null,
+      ant.tabaco && ant.tabaco !== 'no_fumador' ? `Tabaco: ${ant.tabaco}` : null,
+      ant.alcohol && ant.alcohol !== 'no' ? `Alcohol: ${ant.alcohol}` : null,
+      ant.actividad_fisica ? `Actividad física: ${ant.actividad_fisica}` : null,
+      ant.otros_habitos ? `Otros hábitos: ${ant.otros_habitos}` : null,
+    ].filter(Boolean).join('\n')
+    if (antTexto) seccion('ANTECEDENTES', antTexto)
+  }
+
+  // Medicaciones activas
+  const meds = pacienteCompleto.value?.medicaciones?.filter(m => m.activo)
+  if (meds?.length) {
+    doc.setTextColor(...azul)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('MEDICACIÓN ACTUAL', 14, y)
+    y += 4
+    doc.setTextColor(30, 30, 30)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    meds.forEach(m => {
+      if (y > 270) { doc.addPage(); y = 15 }
+      const linea = `• ${m.nombre} ${m.dosis || ''} ${m.frecuencia || ''}`.trim()
+      const lines = doc.splitTextToSize(linea, ancho - 28)
+      doc.text(lines, 14, y)
+      y += lines.length * 4
+    })
+    y += 4
     if (y > 270) { doc.addPage(); y = 15 }
   }
 
@@ -1208,6 +1247,10 @@ onMounted(async () => {
       chatHistorial.value = data.respuestaIA.historial || []
     }
     try { await cargarArchivos() } catch { archivos.value = [] }
+    try {
+      const { data: pac } = await axios.get(`/api/pacientes/${data.paciente_id}`)
+      pacienteCompleto.value = pac
+    } catch { /* ignorar */ }
     try {
       const { data } = await axios.get('/api/claude/uso-mes')
       usoIA.value = data
