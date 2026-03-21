@@ -120,7 +120,7 @@ app.use('/api/archivos',  archivosRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/turnos',    turnosRouter)
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'Medicina IA API', env: IS_PROD ? 'production' : 'development' }))
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'Medicina IA API', env: IS_PROD ? 'production' : 'development', version: 'v2-memoryStorage-20260321' }))
 app.get('/api/config', (_req, res) => res.json({ whatsapp: !!(process.env.ULTRAMSG_INSTANCE && process.env.ULTRAMSG_TOKEN) }))
 
 // ── Error handler global (no expone detalles en producción) ────
