@@ -120,7 +120,8 @@ app.use('/api/archivos',  archivosRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/turnos',    turnosRouter)
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'Medicina IA API', env: IS_PROD ? 'production' : 'development' }))
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'Medicina IA API', env: IS_PROD ? 'production' : 'development', version: 'v4-fix-contenido' }))
+app.get('/api/version-test', (_req, res) => res.json({ ok: true, msg: 'CODIGO CORRECTO ACTIVO' }))
 app.get('/api/config', (_req, res) => res.json({ whatsapp: !!(process.env.ULTRAMSG_INSTANCE && process.env.ULTRAMSG_TOKEN) }))
 
 // ── Error handler global (no expone detalles en producción) ────
@@ -141,6 +142,11 @@ async function start() {
     // En producción no usar alter:true (puede romper datos). Usá migraciones.
     await sequelize.sync({ alter: !IS_PROD })
     console.log('✓ Tablas sincronizadas')
+    const [cols] = await sequelize.query("SHOW COLUMNS FROM archivos LIKE 'contenido'")
+    if (cols.length === 0) {
+      await sequelize.query("ALTER TABLE archivos ADD COLUMN contenido LONGTEXT NULL")
+      console.log('✓ Migración: columna contenido agregada')
+    }
     app.listen(PORT, () => console.log(`🩺 Medicina IA corriendo en http://localhost:${PORT} [${IS_PROD ? 'PROD' : 'DEV'}]`))
   } catch (err) {
     console.error('✗ Error al iniciar:', err.message)
