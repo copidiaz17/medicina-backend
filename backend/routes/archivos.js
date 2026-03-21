@@ -41,15 +41,7 @@ async function verificarOwnerConsulta(consultaId, userId) {
   return consulta
 }
 
-// ─── Multer config ────────────────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename:    (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase()
-    cb(null, `${uuidv4()}${ext}`)
-  },
-})
-
+// ─── Multer config (memoryStorage: evita dependencia del filesystem) ──
 const TIPOS_PERMITIDOS = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
   'application/pdf',
@@ -60,10 +52,11 @@ const TIPOS_PERMITIDOS = [
 ]
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
   fileFilter: (req, file, cb) => {
-    if (TIPOS_PERMITIDOS.includes(file.mimetype)) return cb(null, true)
+    const mime = file.mimetype.split(';')[0].trim()
+    if (TIPOS_PERMITIDOS.includes(mime)) return cb(null, true)
     const ext = path.extname(file.originalname).toLowerCase()
     const extsPermitidas = ['.jpg','.jpeg','.png','.gif','.webp','.pdf','.dcm','.txt','.xlsx','.xls']
     if (extsPermitidas.includes(ext)) return cb(null, true)
@@ -107,18 +100,27 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
     const { categoria, descripcion } = req.body
     const creados = []
     for (const file of req.files) {
-      const cat = categoria || detectarCategoria(file.mimetype, file.originalname)
-      // Texto: guardar contenido en DB y eliminar archivo físico
-      let contenido = null
-      if (file.mimetype === 'text/plain') {
-        contenido = fs.readFileSync(join(UPLOADS_DIR, file.filename), 'utf8')
-        fs.unlinkSync(join(UPLOADS_DIR, file.filename))
+      const mime = file.mimetype.split(';')[0].trim()
+      const cat  = categoria || detectarCategoria(mime, file.originalname)
+      const ext  = path.extname(file.originalname).toLowerCase()
+
+      let contenido     = null
+      let nombre_archivo = `${uuidv4()}${ext}`
+
+      if (mime === 'text/plain' || ext === '.txt') {
+        // Texto: guardar en DB, no necesita archivo físico
+        contenido = file.buffer.toString('utf8')
+      } else {
+        // Binario: escribir al disco
+        if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+        fs.writeFileSync(join(UPLOADS_DIR, nombre_archivo), file.buffer)
       }
+
       const a = await Archivo.create({
         consulta_id:     req.params.consultaId,
         nombre_original: file.originalname,
-        nombre_archivo:  file.filename,
-        tipo_mime:       file.mimetype,
+        nombre_archivo,
+        tipo_mime:       mime,
         tamano:          file.size,
         categoria:       cat,
         descripcion:     descripcion || '',
