@@ -141,6 +141,8 @@ async function start() {
     // En producción no usar alter:true (puede romper datos). Usá migraciones.
     await sequelize.sync({ alter: !IS_PROD })
     console.log('✓ Tablas sincronizadas')
+    // Migración: agregar columna contenido si no existe (para archivos de texto en Render)
+    await sequelize.query("ALTER TABLE archivos ADD COLUMN IF NOT EXISTS contenido LONGTEXT NULL").catch(() => {})
     app.listen(PORT, () => console.log(`🩺 Medicina IA corriendo en http://localhost:${PORT} [${IS_PROD ? 'PROD' : 'DEV'}]`))
   } catch (err) {
     console.error('✗ Error al iniciar:', err.message)
