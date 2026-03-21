@@ -821,6 +821,27 @@ async function exportarPDF() {
   seccion('ECG', c.ecg_descripcion)
   seccion('ESTUDIOS REALIZADOS', c.estudios_realizados)
 
+  // Archivos adjuntos
+  if (archivos.value.length > 0) {
+    doc.setTextColor(...azul)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ARCHIVOS Y ESTUDIOS ADJUNTOS', 14, y)
+    y += 4
+    doc.setTextColor(30, 30, 30)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    archivos.value.forEach((a, idx) => {
+      if (y > 270) { doc.addPage(); y = 15 }
+      const nombre = a.nombre_original || a.nombre || `Archivo ${idx + 1}`
+      const desc = a.descripcion ? ` — ${a.descripcion}` : ''
+      doc.text(`• ${nombre}${desc}`, 14, y)
+      y += 4
+    })
+    y += 3
+    if (y > 270) { doc.addPage(); y = 15 }
+  }
+
   // Signos vitales
   const sv = signosVitales.value.filter(s => s.valor)
   if (sv.length > 0) {
