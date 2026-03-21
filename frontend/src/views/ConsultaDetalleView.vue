@@ -1121,18 +1121,12 @@ function cerrarUpload() {
   modalTab.value = 'archivo'
 }
 
-async function toggleTexto(a) {
+function toggleTexto(a) {
   const map = new Map(textosExpandidos.value)
   if (map.has(a.id)) {
     map.delete(a.id)
   } else {
-    try {
-      const resp = await fetch(urlArchivo(a))
-      const texto = await resp.text()
-      map.set(a.id, texto)
-    } catch {
-      map.set(a.id, '[Error al cargar el informe]')
-    }
+    map.set(a.id, a.contenido || '[Sin contenido]')
   }
   textosExpandidos.value = map
 }
