@@ -1106,7 +1106,7 @@ async function eliminarArchivo(a) {
 
 async function cargarArchivos() {
   const { data } = await axios.get(`/api/archivos/consulta/${consulta.value.id}`, { timeout: 10000 })
-  archivos.value = data
+  archivos.value = data // incluye campo contenido para informes de texto
 }
 
 function cerrarUpload() {
