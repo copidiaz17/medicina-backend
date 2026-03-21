@@ -154,6 +154,32 @@ router.delete('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: errMsg(err) }) }
 })
 
+// ─── POST /api/archivos/consulta/:consultaId/texto ───────────────
+// Guarda un informe escrito como texto puro en DB (sin archivo físico)
+router.post('/consulta/:consultaId/texto', async (req, res) => {
+  try {
+    const consulta = await verificarOwnerConsulta(req.params.consultaId, req.user.id)
+    if (!consulta) return res.status(404).json({ error: 'Consulta no encontrada o acceso denegado' })
+
+    const { titulo, categoria, contenido } = req.body
+    if (!titulo || !contenido) return res.status(400).json({ error: 'titulo y contenido son requeridos' })
+
+    const a = await Archivo.create({
+      consulta_id:     req.params.consultaId,
+      nombre_original: `${titulo}.txt`,
+      nombre_archivo:  `${uuidv4()}.txt`,
+      tipo_mime:       'text/plain',
+      tamano:          Buffer.byteLength(contenido, 'utf8'),
+      categoria:       categoria || 'otro',
+      descripcion:     titulo,
+      contenido,
+    })
+    res.status(201).json(a)
+  } catch (err) {
+    res.status(400).json({ error: errMsg(err) })
+  }
+})
+
 // ─── GET /api/archivos/ver/:filename ─────────────────────────────
 // Requiere autenticación (router.use(authMiddleware) arriba)
 router.get('/ver/:filename', async (req, res) => {

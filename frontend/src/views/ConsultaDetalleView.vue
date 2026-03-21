@@ -1136,14 +1136,10 @@ async function guardarInformeTexto() {
   subiendo.value = true
   errorUpload.value = ''
   try {
-    const blob = new Blob([textoContenido.value], { type: 'text/plain' })
-    const file = new File([blob], `${textoTitulo.value}.txt`, { type: 'text/plain' })
-    const fd = new FormData()
-    fd.append('archivos', file)
-    fd.append('categoria', textoCategoria.value)
-    fd.append('descripcion', textoTitulo.value)
-    await axios.post(`/api/archivos/consulta/${consulta.value.id}`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    await axios.post(`/api/archivos/consulta/${consulta.value.id}/texto`, {
+      titulo:    textoTitulo.value,
+      categoria: textoCategoria.value,
+      contenido: textoContenido.value,
     })
     toast.success('Informe guardado')
     cerrarUpload()
