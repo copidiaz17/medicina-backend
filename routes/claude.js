@@ -306,19 +306,29 @@ function construirContentBlocks(contextoTexto, archivos) {
   for (const archivo of archivos) {
     const label = `${archivo.nombre_original} (${archivo.categoria}${archivo.descripcion ? ' — ' + archivo.descripcion : ''})`
 
-    // Archivos de texto: leer desde DB (campo contenido), nunca del disco
+    // Archivos de texto: leer desde DB directamente
     if (archivo.tipo_mime === 'text/plain') {
       const contenido = archivo.contenido || '[Contenido no disponible]'
       blocks.push({ type: 'text', text: `\n---\n**Informe escrito (${archivo.categoria}):** ${label}\n${contenido}` })
       continue
     }
 
-    // Archivos binarios (imágenes, PDFs): leer desde disco
-    const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
-    if (!fs.existsSync(ruta)) continue
+    // Archivos binarios (imágenes, PDFs): leer desde DB (base64) o disco como fallback
+    let buffer = null
+    if (archivo.contenido) {
+      // Guardado en DB como base64 — siempre disponible aunque Render reinicie
+      buffer = Buffer.from(archivo.contenido, 'base64')
+    } else {
+      // Fallback: archivo subido antes del fix, intentar desde disco
+      const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
+      if (!fs.existsSync(ruta)) {
+        blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" (${archivo.categoria}) adjunto a la consulta pero no disponible para análisis visual — fue subido antes de la actualización del sistema. El médico lo tiene disponible en su historial.]` })
+        continue
+      }
+      buffer = fs.readFileSync(ruta)
+    }
 
     try {
-      const buffer = fs.readFileSync(ruta)
       // Límite: 4 MB por archivo para no exceder límite de la API
       if (buffer.length > 4 * 1024 * 1024) {
         blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" omitido: ${(buffer.length/1024/1024).toFixed(1)} MB supera el límite de análisis visual]` })
@@ -337,7 +347,7 @@ function construirContentBlocks(contextoTexto, archivos) {
         blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } })
       }
     } catch (e) {
-      blocks.push({ type: 'text', text: `[Error al leer ${archivo.nombre_original}: ${e.message}]` })
+      blocks.push({ type: 'text', text: `[Error al procesar ${archivo.nombre_original}: ${e.message}]` })
     }
   }
 

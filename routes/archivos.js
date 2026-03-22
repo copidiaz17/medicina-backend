@@ -108,7 +108,11 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
       let contenido = null
       if (mime === 'text/plain' || ext === '.txt') {
         contenido = file.buffer.toString('utf8')
+      } else if (file.buffer.length <= 10 * 1024 * 1024) {
+        // PDFs e imágenes ≤10MB: guardar en DB como base64 (persiste en Render restarts)
+        contenido = file.buffer.toString('base64')
       } else {
+        // Archivos muy grandes >10MB: guardar en disco como fallback
         if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
         fs.writeFileSync(join(UPLOADS_DIR, nombre_archivo), file.buffer)
       }
