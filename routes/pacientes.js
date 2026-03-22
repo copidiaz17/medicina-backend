@@ -79,7 +79,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const doctorId = req.user.rol === 'secretaria' ? req.user.medico_id : req.user.id
-    const p = await Paciente.create({ ...req.body, doctor_id: doctorId })
+    // Convertir cadenas vacías a null para evitar error en campos ENUM (sexo)
+    const body = Object.fromEntries(
+      Object.entries(req.body).map(([k, v]) => [k, v === '' ? null : v])
+    )
+    const p = await Paciente.create({ ...body, doctor_id: doctorId })
     res.status(201).json(p)
   } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al crear paciente') }) }
 })
@@ -89,7 +93,10 @@ router.put('/:id', async (req, res) => {
   try {
     const p = await Paciente.findOne({ where: { id: req.params.id, ...scopeDoctor(req) } })
     if (!p) return res.status(404).json({ error: 'No encontrado' })
-    await p.update(req.body)
+    const body = Object.fromEntries(
+      Object.entries(req.body).map(([k, v]) => [k, v === '' ? null : v])
+    )
+    await p.update(body)
     res.json(p)
   } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al actualizar paciente') }) }
 })
