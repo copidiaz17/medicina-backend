@@ -21,6 +21,8 @@ router.use(authMiddleware)
 
 const IS_PROD = process.env.NODE_ENV === 'production'
 const MAX_HISTORIAL = 50  // máximo de turnos de follow-up por consulta
+const MAX_ARCHIVO_BYTES  = 4 * 1024 * 1024    // 4 MB por archivo
+const MAX_TOTAL_ADJUNTOS = 18 * 1024 * 1024   // 18 MB total por consulta (evita 400 por request demasiado grande)
 
 // ─── Helper: cuenta consultas IA usadas en el mes actual ──────────
 async function contarUsoPorMes(doctorId) {
@@ -406,6 +408,7 @@ function armarContexto(paciente, antecedente, medicaciones, consulta, archivos, 
 // ─── Construir content blocks multimodal ─────────────────────────
 function construirContentBlocks(contextoTexto, archivos) {
   const blocks = [{ type: 'text', text: contextoTexto }]
+  let totalBytes = 0
 
   for (const archivo of archivos) {
     const label = `${archivo.nombre_original} (${archivo.categoria}${archivo.descripcion ? ' — ' + archivo.descripcion : ''})`
@@ -422,11 +425,17 @@ function construirContentBlocks(contextoTexto, archivos) {
 
     try {
       const buffer = fs.readFileSync(ruta)
-      // Límite: 4 MB por archivo para no exceder límite de la API
-      if (buffer.length > 4 * 1024 * 1024) {
-        blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" omitido: ${(buffer.length/1024/1024).toFixed(1)} MB supera el límite de análisis visual]` })
+      // Límite por archivo
+      if (buffer.length > MAX_ARCHIVO_BYTES) {
+        blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" omitido: ${(buffer.length/1024/1024).toFixed(1)} MB supera el límite por archivo]` })
         continue
       }
+      // Límite total de adjuntos por consulta (evita exceder el tamaño de request de la API)
+      if (totalBytes + buffer.length > MAX_TOTAL_ADJUNTOS) {
+        blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" omitido: se superó el límite total de adjuntos para una sola consulta]` })
+        continue
+      }
+      totalBytes += buffer.length
       const base64 = buffer.toString('base64')
 
       if (archivo.tipo_mime.startsWith('image/')) {
@@ -514,7 +523,7 @@ router.post('/consultar/:consultaId', async (req, res) => {
     const contentBlocks = construirContentBlocks(contextoTexto, archivos)
     const systemPrompt  = buildSystemPrompt(especialidad)
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3, timeout: 110000 })
     const message = await anthropic.messages.create({
       model:      'claude-sonnet-4-6',
       max_tokens: 3000,
@@ -522,7 +531,12 @@ router.post('/consultar/:consultaId', async (req, res) => {
       messages:   [{ role: 'user', content: contentBlocks }],
     })
 
-    const respuesta = message.content[0].text
+    // Extracción robusta: no asumir que el 1er bloque es texto
+    const respuesta = (message.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+    if (!respuesta) {
+      console.error('IA sin texto. stop_reason:', message.stop_reason, '| content:', JSON.stringify(message.content)?.slice(0, 300))
+      return res.status(502).json({ error: 'La IA no devolvió un análisis. Reintentá; si persiste, revisá que el caso tenga datos suficientes.' })
+    }
 
     // Guardar / actualizar en DB
     const [iaRecord, created] = await ConsultaIA.findOrCreate({
@@ -535,8 +549,16 @@ router.post('/consultar/:consultaId', async (req, res) => {
 
     res.json({ respuesta, tokens: message.usage, archivos_analizados: archivos.length })
   } catch (err) {
-    console.error('Error Claude:', err.message)
-    res.status(500).json({ error: IS_PROD ? 'Error al consultar IA' : err.message })
+    const status  = err?.status || err?.statusCode
+    const apiType = err?.error?.error?.type || err?.error?.type || err?.name
+    console.error('Error Claude consultar:', { status, apiType, message: err?.message })
+    let userMsg = 'Error al consultar IA. Reintentá.'
+    if (status === 429 || status === 529 || /timeout/i.test(err?.name || '')) {
+      userMsg = 'El servicio de IA está ocupado o tardó demasiado. Reintentá en unos segundos.'
+    } else if (status === 400) {
+      userMsg = 'No se pudo procesar el caso (posible archivo demasiado grande o con formato no soportado). Quitá o reducí los adjuntos y reintentá.'
+    }
+    res.status(500).json({ error: IS_PROD ? userMsg : (err?.message || userMsg) })
   }
 })
 
@@ -594,7 +616,7 @@ router.post('/consultar/:consultaId/pregunta', async (req, res) => {
     }
     messages.push({ role: 'user', content: pregunta.trim() })
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3, timeout: 110000 })
     const message = await anthropic.messages.create({
       model:      'claude-sonnet-4-6',
       max_tokens: 2000,
@@ -602,7 +624,11 @@ router.post('/consultar/:consultaId/pregunta', async (req, res) => {
       messages,
     })
 
-    const respuestaFollowUp = message.content[0].text
+    const respuestaFollowUp = (message.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+    if (!respuestaFollowUp) {
+      console.error('IA follow-up sin texto. stop_reason:', message.stop_reason)
+      return res.status(502).json({ error: 'La IA no devolvió respuesta. Reintentá.' })
+    }
 
     // Guardar nuevo turno en historial
     await iaRecord.update({
@@ -615,8 +641,13 @@ router.post('/consultar/:consultaId/pregunta', async (req, res) => {
 
     res.json({ respuesta: respuestaFollowUp, tokens: message.usage })
   } catch (err) {
-    console.error('Error Claude follow-up:', err.message)
-    res.status(500).json({ error: IS_PROD ? 'Error al consultar IA' : err.message })
+    const status  = err?.status || err?.statusCode
+    const apiType = err?.error?.error?.type || err?.error?.type || err?.name
+    console.error('Error Claude follow-up:', { status, apiType, message: err?.message })
+    let userMsg = 'Error al consultar IA. Reintentá.'
+    if (status === 429 || status === 529 || /timeout/i.test(err?.name || '')) userMsg = 'El servicio de IA está ocupado o tardó demasiado. Reintentá.'
+    else if (status === 400) userMsg = 'No se pudo procesar la pregunta (caso muy extenso o adjuntos pesados).'
+    res.status(500).json({ error: IS_PROD ? userMsg : (err?.message || userMsg) })
   }
 })
 
