@@ -11,6 +11,7 @@ import { Archivo } from '../models/Archivo.js'
 import { AnalisisImagen } from '../models/AnalisisImagen.js'
 import { Consulta } from '../models/Consulta.js'
 import { Paciente } from '../models/Paciente.js'
+import { subirArchivo, bajarArchivo, borrarArchivo, urlFirmada } from '../utils/cloudinary.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const UPLOADS_DIR = join(__dirname, '../uploads')
@@ -107,16 +108,19 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
       const cat  = categoria || detectarCategoria(mime, file.originalname)
       const ext  = path.extname(file.originalname).toLowerCase()
 
-      let contenido     = null
+      let contenido      = null
       let nombre_archivo = `${uuidv4()}${ext}`
+      let public_id      = null
+      let resource_type  = null
 
       if (mime === 'text/plain' || ext === '.txt') {
         // Texto: guardar en DB, no necesita archivo físico
         contenido = file.buffer.toString('utf8')
       } else {
-        // Binario: escribir al disco
-        if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-        fs.writeFileSync(join(UPLOADS_DIR, nombre_archivo), file.buffer)
+        // Binario: subir a Cloudinary (persistente y privado)
+        const sub = await subirArchivo(file.buffer, mime)
+        public_id     = sub.public_id
+        resource_type = sub.resource_type
       }
 
       const a = await Archivo.create({
@@ -128,6 +132,8 @@ router.post('/consulta/:consultaId', upload.array('archivos', 20), async (req, r
         categoria:       cat,
         descripcion:     descripcion || '',
         contenido,
+        public_id,
+        resource_type,
       })
       creados.push(a)
     }
@@ -152,8 +158,9 @@ router.delete('/:id', async (req, res) => {
   try {
     const archivo = await verificarOwnerArchivo(req.params.id, req.user.id)
     if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado o acceso denegado' })
-    const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
-    if (fs.existsSync(ruta)) fs.unlinkSync(ruta)
+    if (archivo.public_id) {
+      try { await borrarArchivo(archivo.public_id, archivo.resource_type) } catch (e) { console.error('[cloudinary delete]', e.message) }
+    }
     await archivo.destroy()
     res.json({ ok: true })
   } catch (err) { res.status(500).json({ error: errMsg(err) }) }
@@ -204,15 +211,13 @@ router.post('/:id/analizar', async (req, res) => {
       return res.status(400).json({ error: 'Solo se pueden analizar imágenes (JPG, PNG, GIF, WEBP)' })
     }
 
-    const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
-    if (!fs.existsSync(ruta)) return res.status(404).json({ error: 'Archivo no encontrado en disco' })
-
-    const base64 = fs.readFileSync(ruta).toString('base64')
+    if (!archivo.public_id) return res.status(404).json({ error: 'Archivo no disponible (volvé a subirlo).' })
+    const base64 = (await bajarArchivo(archivo.public_id, archivo.resource_type)).toString('base64')
     const promptBase = PROMPTS_CATEGORIA[archivo.categoria] ||
       'Sos un médico especialista en diagnóstico por imágenes. Analizá esta imagen médica y describí en español los hallazgos principales y tu impresión diagnóstica.'
     const prompt = promptBase + '\n\nEstructurá la respuesta con las secciones: **Hallazgos**, **Impresión diagnóstica** y **Recomendaciones**. Aclará al final que es orientativo y la decisión clínica final es del médico tratante.'
 
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3, timeout: 110000 })
     const response = await client.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 1500,
@@ -225,7 +230,8 @@ router.post('/:id/analizar', async (req, res) => {
       }],
     })
 
-    const hallazgos = response.content[0]?.text || ''
+    const hallazgos = (response.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+    if (!hallazgos) return res.status(502).json({ error: 'La IA no devolvió hallazgos. Reintentá.' })
 
     let analisis = await AnalisisImagen.findOne({ where: { archivo_id: archivo.id } })
     if (analisis) {
@@ -279,9 +285,9 @@ router.get('/ver/:filename', async (req, res) => {
       return res.send(archivo.contenido)
     }
 
-    const ruta = join(UPLOADS_DIR, filename)
-    if (!fs.existsSync(ruta)) return res.status(404).json({ error: 'Archivo no encontrado en disco' })
-    res.sendFile(ruta)
+    if (!archivo.public_id) return res.status(404).json({ error: 'Archivo no disponible' })
+    // Redirige a una URL firmada de corta vida (el archivo es privado en Cloudinary)
+    return res.redirect(urlFirmada(archivo.public_id, archivo.resource_type))
   } catch (err) { res.status(500).json({ error: errMsg(err) }) }
 })
 

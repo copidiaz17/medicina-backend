@@ -12,6 +12,7 @@ import { Medicacion } from '../models/Medicacion.js'
 import { ConsultaIA } from '../models/ConsultaIA.js'
 import { Archivo } from '../models/Archivo.js'
 import { Usuario } from '../models/Usuario.js'
+import { bajarArchivo } from '../utils/cloudinary.js'
 
 const __dirname   = dirname(fileURLToPath(import.meta.url))
 const UPLOADS_DIR = join(__dirname, '../uploads')
@@ -406,25 +407,25 @@ function armarContexto(paciente, antecedente, medicaciones, consulta, archivos, 
 }
 
 // ─── Construir content blocks multimodal ─────────────────────────
-function construirContentBlocks(contextoTexto, archivos) {
+async function construirContentBlocks(contextoTexto, archivos) {
   const blocks = [{ type: 'text', text: contextoTexto }]
   let totalBytes = 0
 
   for (const archivo of archivos) {
     const label = `${archivo.nombre_original} (${archivo.categoria}${archivo.descripcion ? ' — ' + archivo.descripcion : ''})`
 
-    // Texto almacenado en DB (filesystem efímero en Render)
+    // Texto almacenado en DB
     if (archivo.tipo_mime === 'text/plain') {
       const contenido = archivo.contenido || '[Contenido no disponible]'
       blocks.push({ type: 'text', text: `\n---\n**Informe escrito (${archivo.categoria}):** ${label}\n${contenido}` })
       continue
     }
 
-    const ruta = join(UPLOADS_DIR, archivo.nombre_archivo)
-    if (!fs.existsSync(ruta)) continue
+    // Binario: bajarlo de Cloudinary (los archivos viejos en disco efímero ya no existen)
+    if (!archivo.public_id) continue
 
     try {
-      const buffer = fs.readFileSync(ruta)
+      const buffer = await bajarArchivo(archivo.public_id, archivo.resource_type)
       // Límite por archivo
       if (buffer.length > MAX_ARCHIVO_BYTES) {
         blocks.push({ type: 'text', text: `[Archivo "${archivo.nombre_original}" omitido: ${(buffer.length/1024/1024).toFixed(1)} MB supera el límite por archivo]` })
@@ -520,7 +521,7 @@ router.post('/consultar/:consultaId', async (req, res) => {
     ])
 
     const contextoTexto = armarContexto(paciente, antecedente, medicaciones, consulta, archivos, consultasPrevias)
-    const contentBlocks = construirContentBlocks(contextoTexto, archivos)
+    const contentBlocks = await construirContentBlocks(contextoTexto, archivos)
     const systemPrompt  = buildSystemPrompt(especialidad)
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3, timeout: 110000 })
@@ -603,7 +604,7 @@ router.post('/consultar/:consultaId/pregunta', async (req, res) => {
     ])
 
     const contextoTexto = armarContexto(paciente, antecedente, medicaciones, consulta, archivos, consultasPrevias)
-    const primerosBlocks = construirContentBlocks(contextoTexto, archivos)
+    const primerosBlocks = await construirContentBlocks(contextoTexto, archivos)
 
     // Cadena completa: contexto → respuesta inicial → historial previo → nueva pregunta
     const messages = [

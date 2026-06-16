@@ -15,6 +15,9 @@ export const Archivo = sequelize.define('Archivo', {
   },
   descripcion:      { type: DataTypes.STRING(255), allowNull: true },
   contenido:        { type: DataTypes.TEXT('long'), allowNull: true },
+  // Almacenamiento en Cloudinary (reemplaza el disco efímero de Render)
+  public_id:        { type: DataTypes.STRING(255), allowNull: true },
+  resource_type:    { type: DataTypes.STRING(20),  allowNull: true },
 }, { tableName: 'archivos', freezeTableName: true, timestamps: true })
 
 Archivo.belongsTo(Consulta, { foreignKey: 'consulta_id', as: 'consulta' })
