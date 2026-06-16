@@ -37,6 +37,7 @@ import './models/Medicacion.js'
 import './models/Consulta.js'
 import './models/ConsultaIA.js'
 import './models/Archivo.js'
+import './models/AnalisisImagen.js'
 import './models/Turno.js'
 
 // Rutas

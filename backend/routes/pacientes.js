@@ -75,11 +75,19 @@ router.get('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: errMsg(err) }) }
 })
 
+// Campos nullable en la base (fecha/número): un '' del formulario debe guardarse como null
+const CAMPOS_NULLABLE = ['fecha_nacimiento', 'peso_kg', 'talla_cm']
+function sanitizarPaciente(body) {
+  const out = { ...body }
+  for (const c of CAMPOS_NULLABLE) if (out[c] === '' || out[c] === undefined) out[c] = null
+  return out
+}
+
 // Crear paciente — auto-asigna doctor_id (secretaria usa su médico asignado)
 router.post('/', async (req, res) => {
   try {
     const doctorId = req.user.rol === 'secretaria' ? req.user.medico_id : req.user.id
-    const p = await Paciente.create({ ...req.body, doctor_id: doctorId })
+    const p = await Paciente.create({ ...sanitizarPaciente(req.body), doctor_id: doctorId })
     res.status(201).json(p)
   } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al crear paciente') }) }
 })
@@ -89,7 +97,7 @@ router.put('/:id', async (req, res) => {
   try {
     const p = await Paciente.findOne({ where: { id: req.params.id, ...scopeDoctor(req) } })
     if (!p) return res.status(404).json({ error: 'No encontrado' })
-    await p.update(req.body)
+    await p.update(sanitizarPaciente(req.body))
     res.json(p)
   } catch (err) { res.status(400).json({ error: errMsg(err, 'Error al actualizar paciente') }) }
 })
